@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 模型查看器</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; }
+        canvas { display: block; }
+        #buttons { margin: 20px; }
+        button { margin: 5px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="buttons">
+        <button onclick="loadModel('塔.glb')">模型 1</button>
+        <button onclick="loadModel('大殿.glb')">模型 2</button>
+        <button onclick="loadModel('船.glb')">模型 3</button>
+        <button id="toggleRotation">停止旋转</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r128/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // 初始化场景、相机和渲染器
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight - 100);
+  
+        renderer.setClearColor(0xffffff); // 设置背景颜色为白色
+        document.body.appendChild(renderer.domElement);
+
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // 环境光
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 10); // 平行光
+        directionalLight.position.set(5, 5, 5).normalize();
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 10, 100); // 点光源
+        pointLight.position.set(0, 10, 10);
+        scene.add(pointLight);
+
+          // 当前加载的模型
+          let currentModel = null;
+        let isRotating = true; // 控制旋转的状态
+
+        // 加载模型的函数
+        function loadModel(modelPath) {
+            // 如果当前模型已经存在，先将其从场景中移除
+            if (currentModel) {
+                scene.remove(currentModel);
+            }
+
+            // 加载新的模型
+            const loader = new THREE.GLTFLoader();
+            loader.load(modelPath, function (gltf) {
+                currentModel = gltf.scene;
+
+                // 计算模型的中心并调整位置
+                const box = new THREE.Box3().setFromObject(currentModel);
+                const center = box.getCenter(new THREE.Vector3());
+                currentModel.position.sub(center); // 将模型中心移到原点
+
+                scene.add(currentModel);
+            }, undefined, function (error) {
+                console.error(error);
+            });
+        }
+
+        // 设置相机位置
+        camera.position.z = 5;
+
+        // 添加 OrbitControls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // 启用阻尼
+        controls.dampingFactor = 0.25; // 阻尼因子
+        controls.enableZoom = true; // 启用缩放
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            if (currentModel && isRotating) {
+                currentModel.rotation.y += 0.01; // 旋转模型
+            }
+            controls.update(); // 更新控制器
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 处理窗口大小变化
+        window.addEventListener('resize', function () {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight - 100);
+        });
+
+        // 切换旋转状态
+        document.getElementById('toggleRotation').addEventListener('click', function() {
+            isRotating = !isRotating; // 切换旋转状态
+            this.textContent = isRotating ? '停止旋转' : '开始旋转'; // 更新按钮文本
+        });
+    </script>
+</body>
+</html>
